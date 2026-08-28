@@ -1,0 +1,14 @@
+# Godot 4 local import cache / generated files -- do not commit
+.godot/
+.import/
+export.cfg
+export_credentials.cfg
+
+# Exported builds
+/builds/
+*.pck
+*.zip
+
+# OS junk
+.DS_Store
+Thumbs.db
