@@ -31,23 +31,65 @@ already set as the main scene, so it should just run.
 Walk your character behind/in front of the trees — that's the occlusion
 effect doing its job.
 
+**Heads up on the character's first run:** the model renders inside a
+hidden 3D camera that gets composited onto your 2D character (see "How
+the 3D character works" below). I set up the framing numbers by
+calculation, but I have no way to actually render Godot's viewport myself
+to check them — so on first launch the character's size, vertical
+position, or facing direction may be a little off. That's expected, not
+a bug. Three `@export` variables on `Player.gd` are the knobs to fix it —
+select the Player node in `scenes/Player.tscn` and adjust them in the
+Inspector (no code editing needed):
+- **Target Height M** — how tall the model is scaled to (in the hidden
+  3D scene). If the character looks too small/large relative to the
+  trees, adjust this — but you'll likely also want to change `size` on
+  the `Camera3D` node in the same scene to match (bigger height needs a
+  bigger camera size to keep it framed).
+- **Manual Scale Override** — set this above 0 to bypass the automatic
+  sizing entirely and force an exact scale, if auto-sizing looks wrong.
+- **Facing Offset Degrees** — if the character turns to face the wrong
+  way when you move, nudge this in 90° steps until it's right.
+
+If the character appears vertically misaligned (feet floating above the
+shadow, or head cut off), the fix is in `scenes/Player.tscn`: nudge the
+`Sprite2D` node's **Offset** (Y value), or the `Camera3D` node's
+**Position**/**Size**.
+
 ## How it's built (so the "why" isn't a mystery)
 
 ```
 project.godot        # engine/project settings (rendering mode, window size)
+art/
+  background/          # your background image
+  character/            # your 3D model
+  props/                  # walk-behind scenery images (not added yet)
 scenes/
   Main.tscn           # the playable scene: background + world + player + trees
-  Player.tscn          # the character (collision shape + camera)
-  Tree.tscn             # a reusable "walk behind me" scenery object
+  Player.tscn          # the character (collision, camera, 3D render pipeline)
+  Tree.tscn             # a reusable "walk behind me" scenery object (still a placeholder)
 scripts/
   Main.gd              # builds the chat + customization UI, wires it up
-  Player.gd            # movement, and draws the placeholder character
-  Tree.gd               # draws the placeholder tree
+  Player.gd            # movement, facing, animation, and the 3D-render-to-sprite setup
+  Tree.gd               # draws the placeholder tree shape
 ```
 
-**No image files.** Every visual (character, trees, shadows) is drawn
-directly in GDScript with `_draw()` calls, so the prototype runs with zero
-art assets. This is a placeholder — see "Adding your own art" below.
+**The trees are still code-drawn placeholders** (simple shapes via
+`_draw()`) since no prop images have been added yet — see "Adding your
+own art" below for the format once you have some.
+
+## How the 3D character works
+
+`scenes/Player.tscn` has a `SubViewport` node — think of it as an
+invisible second screen that renders its own tiny 3D scene (your model +
+a `Camera3D` + a light) to an image, every frame. A `Sprite2D` then just
+displays that image, like any other 2D sprite. That's the entire trick
+behind mixing a 3D character into a 2D game: the "3D" is real, it's just
+rendered to a texture first instead of straight to your screen.
+
+`Player.gd` also measures your model's actual size on startup and scales
+it to a known height automatically — Blockbench/glTF exports are often
+scaled to fractions of a meter, so hardcoding a scale number would have
+been a guess. See the tuning notes above if the result needs adjusting.
 
 **The walk-behind-scenery trick (Y-Sort):** In `Main.tscn`, the `World`
 node has `y_sort_enabled = true`. Any Node2D you put inside it — the
@@ -65,21 +107,24 @@ node's actual `position` is the ground-contact point Y-sort compares.
 
 ## Adding your own art
 
-You said you can supply placeholder sprites — here's the smallest change
-to use them:
+**Background and character are already wired in** (`art/background/`,
+`art/character/`). Still need: walk-behind scenery (trees, rocks, etc.)
+— see `art/props/README.md` for the format. Once you upload some there,
+here's the change to swap a `Tree` for real art:
 
-1. Drag your image file (e.g. `character.png`) into the Godot editor's
-   FileSystem dock (bottom-left) — it'll be imported automatically.
-2. Open `scenes/Player.tscn`, add a child node of type **Sprite2D**
-   (or **AnimatedSprite2D** if you have a walk-cycle spritesheet).
+1. Drag your image file (e.g. `tree_pine.png`) into the Godot editor's
+   FileSystem dock — it'll be imported automatically.
+2. Open `scenes/Tree.tscn`, add a child node of type **Sprite2D**.
 3. Assign your image to its **Texture** property.
 4. Position that Sprite2D so the *bottom* of the image sits at (0,0) —
    i.e. set its Y offset to roughly `-(image height / 2)`. That keeps the
-   feet at the node origin, which is what Y-sort needs.
-5. Optionally delete the `_draw()` body in `Player.gd` (or leave it — the
-   Sprite2D will just draw on top of it).
+   base at the node origin, which is what Y-sort needs.
+5. Delete the `_draw()` body in `Tree.gd` (or leave it — the Sprite2D
+   will just draw on top of it).
 
-Same idea for `Tree.tscn`/`Tree.gd` for scenery.
+If you end up with several different props (tree, rock, bush...), it's
+worth making one `Tree.tscn`-style scene per prop type rather than
+reusing one scene for everything.
 
 ## Roadmap: what's deliberately not here yet
 
@@ -108,12 +153,11 @@ in later without restructuring what exists:
 - **Inventories** — once you have an auth token, inventory is just rows
   in that same backend's database (Supabase/Firebase both include one),
   fetched with `HTTPRequest` on login.
-- **3D character upgrade** — if you later want an actual 3D model instead
-  of a flat sprite (closer to true Animal Jam Classic), the technique is
-  a `SubViewport` containing a small 3D scene (character + camera),
-  displayed as a texture on a `Sprite2D`/`TextureRect` in the 2D world.
-  It's a bigger lift (rigging, animation, lighting) — worth doing once
-  the 2D gameplay loop already feels right, not before.
+- **Real character customization** — right now the color swatches just
+  tint the whole rendered character (a placeholder effect). Proper
+  customization (recoloring a shirt but not skin, swapping items) needs
+  the model to have separate materials per part, which we can set up
+  once you know what's customizable.
 
 ## If you get stuck
 

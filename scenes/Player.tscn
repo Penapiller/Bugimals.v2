@@ -1,9 +1,15 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id="1"]
+[ext_resource type="PackedScene" path="res://art/character/HumanModel.gltf" id="2"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_1"]
 radius = 14.0
+
+[sub_resource type="Environment" id="Environment_1"]
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.6
 
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1")
@@ -13,5 +19,32 @@ position = Vector2(0, -10)
 shape = SubResource("CircleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(0, -20)
+position = Vector2(0, -80)
 zoom = Vector2(1.5, 1.5)
+
+[node name="SubViewport" type="SubViewport" parent="."]
+transparent_bg = true
+size = Vector2i(200, 200)
+render_target_update_mode = 4
+own_world_3d = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="SubViewport"]
+environment = SubResource("Environment_1")
+
+[node name="Camera3D" type="Camera3D" parent="SubViewport"]
+position = Vector3(0, 0.9, 2.2)
+rotation_degrees = Vector3(-15, 0, 0)
+current = true
+projection = 1
+size = 1.9
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="SubViewport"]
+rotation_degrees = Vector3(-45, 35, 0)
+light_energy = 1.1
+
+[node name="CharacterRig" type="Node3D" parent="SubViewport"]
+
+[node name="HumanModel" parent="SubViewport/CharacterRig" instance=ExtResource("2")]
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+offset = Vector2(0, -95)
